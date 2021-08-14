@@ -31,8 +31,8 @@ client = WebClient(token=slack_bot_token)
 
 @app.before_request
 def log_request_info():
-    app.logger.debug('Headers\n----\n%s', request.headers)
-    app.logger.debug('Body\n---\n%s', request.get_data())
+    app.logger.info('Headers\n----\n%s', request.headers)
+    app.logger.info('Body\n---\n%s', request.get_data())
 
 
 @app.route('/{}'.format(secret_url_ticket_path), methods=["POST"])
@@ -90,6 +90,11 @@ def timepad_order_webhook():
         response = json.dumps({'message': 'Authentication Required'})
         return response, 401
 
+    status = update['status']['name']
+
+    if status not in ['paid', 'paid_ur']:
+        return "OK", 200
+
     try:
         message = get_order_slack_message(update)
 
@@ -98,13 +103,43 @@ def timepad_order_webhook():
             text=message
         )
     except SlackApiError as e:
+        app.logger.error()
         assert e.response["error"]
+    except
 
     return "OK", 200
 
 
 def get_order_slack_message(timepad_json):
-    return json.dumps(timepad_json, ensure_ascii=True, indent=4)
+    event_name = timepad_json['event']['name']
+
+    final_price = timepad_json['payment']['amount']
+    discount = timepad_json['payment']['discount']
+
+    if discount == 0:
+        price_formatted = str(final_price) + '₽'
+    else:
+        price_formatted = "%d₽ (%d₽ - %d₽)" % (final_price, final_price+discount, discount)
+
+    answers = timepad_json['tickets'][0]['answers']
+
+    name = answers['name']
+    surname = answers['surname']
+    email = answers['mail']
+
+    student_data_formatted = "%s %s (%s)" % (name, surname, email)
+
+    status_name = timepad_json['status']['title']
+
+    promocodes = ', '.join(timepad_json['promocodes'])
+    promocodes_formatted = '' if promocodes == '' else promocodes
+
+    return """
+*%s*
+:student: %s
+:dollar: %s
+Промокоды: %s
+Статус: %s""" % (event_name, student_data_formatted, price_formatted, promocodes_formatted, status_name)
 
 
 if __name__ == '__main__':
