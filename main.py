@@ -45,15 +45,37 @@ def timepad_webhook():
         response = json.dumps({'message': 'Authentication Required'})
         return response, 401
 
+    status = update['status_raw']
+
+    if status not in ['paid', 'paid_ur']:
+        return "OK", 200
+
     try:
+        message = get_slack_message(update)
+
         client.chat_postMessage(
             channel=slack_bot_channel_id,
-            text=json.dumps(update, ensure_ascii=False) + '\n' + sig + '\n' + sig_gen
+            text=message
         )
     except SlackApiError as e:
         assert e.response["error"]
 
-    return "OK"
+    return "OK", 200
+
+
+def get_slack_message(timepad_json):
+    name = timepad_json['name']
+    surname = timepad_json['surname']
+    email = timepad_json['email']
+    status = timepad_json['status']
+    price = timepad_json['price_nominal']
+    event_name = timepad_json['event_name']
+
+    return """
+*%s*
+:dollar: %s₽
+:student: %s %s (%s)
+Статус: %s""" % (event_name, price, name, surname, email, status)
 
 
 if __name__ == '__main__':
