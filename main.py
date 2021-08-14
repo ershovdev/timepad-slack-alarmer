@@ -131,13 +131,13 @@ def get_order_slack_message(timepad_json):
     status_name = timepad_json['status']['title']
 
     promocodes = ', '.join(timepad_json['promocodes'])
-    promocodes_formatted = '' if promocodes == '' else promocodes
+    promocodes_formatted = '' if promocodes == '' else 'Промокоды: ' + promocodes
 
     return """
 *%s*
 :student: %s
 :dollar: %s
-Промокоды: %s
+%s
 Статус: %s""" % (event_name, student_data_formatted, price_formatted, promocodes_formatted, status_name)
 
 
