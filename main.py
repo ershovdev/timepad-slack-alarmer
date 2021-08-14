@@ -105,7 +105,6 @@ def timepad_order_webhook():
     except SlackApiError as e:
         app.logger.error()
         assert e.response["error"]
-    except
 
     return "OK", 200
 
