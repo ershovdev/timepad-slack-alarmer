@@ -122,7 +122,7 @@ def get_order_slack_message(timepad_json):
     if promocodes:
         promocodes_formatted = f'Промокоды: {promocodes}\n'
 
-    referer = timepad_json.get('referer')
+    referer = timepad_json.get('referrer')
     utm_formatted = ''
     if referer:
         utm_formatted = f"_utm_campaign: {referer['campaign']}_\n" \
