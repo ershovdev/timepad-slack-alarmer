@@ -125,9 +125,9 @@ def get_order_slack_message(timepad_json):
     referrer = timepad_json.get('referrer')
     utm_formatted = ''
     if referrer:
-        utm_formatted = f"```utm_campaign: {referrer['campaign']}```\n" \
-                        f"```utm_medium: {referrer['medium']}```\n" \
-                        f"```utm_source: {referrer['source']}```\n"
+        utm_formatted = f"```utm_campaign: {referrer['campaign']}\n" \
+                        f"```utm_medium: {referrer['medium']}\n" \
+                        f"```utm_source: {referrer['source']}\n"
 
     return f'{event_name_formatted}' \
            f'{student_data_formatted}' \
