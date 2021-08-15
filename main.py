@@ -31,8 +31,8 @@ client = WebClient(token=slack_bot_token)
 
 @app.before_request
 def log_request_info():
-    app.logger.info('Headers\n----\n%s', request.headers)
-    app.logger.info('Body\n---\n%s', request.get_data())
+    app.logger.info('\n\n\nHeaders\n----\n%s', request.headers)
+    app.logger.info('Body\n---\n%s', json.dumps(request.get_data(), indent=4))
 
 
 @app.route('/{}'.format(secret_url_ticket_path), methods=["POST"])
