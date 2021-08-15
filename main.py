@@ -37,18 +37,13 @@ def log_request_info():
 
 @app.route('/{}'.format(secret_url_ticket_path), methods=["POST"])
 def timepad_ticket_webhook():
+    if not is_timepad_sign_valid(request):
+        return json.dumps({'message': 'Authentication Required'}), 401
+
     update = request.get_json()
-
-    sig = request.headers.get('X-Hub-Signature') or ''
-    sig_gen = hmac.new(str.encode(secret_timepad_phrase), request.get_data(), hashlib.sha1).hexdigest()
-
-    if sig != ("sha1=" + sig_gen):
-        response = json.dumps({'message': 'Authentication Required'})
-        return response, 401
-
     status = update['status_raw']
 
-    if status not in ['paid', 'paid_ur']:
+    if not is_event_status_allowed(status):
         return "OK", 200
 
     try:
@@ -81,18 +76,13 @@ def get_ticket_slack_message(timepad_json):
 
 @app.route('/{}'.format(secret_url_order_path), methods=["POST"])
 def timepad_order_webhook():
+    if not is_timepad_sign_valid(request):
+        return json.dumps({'message': 'Authentication Required'}), 401
+
     update = request.get_json()
-
-    sig = request.headers.get('X-Hub-Signature') or ''
-    sig_gen = hmac.new(str.encode(secret_timepad_phrase), request.get_data(), hashlib.sha1).hexdigest()
-
-    if sig != ("sha1=" + sig_gen):
-        response = json.dumps({'message': 'Authentication Required'})
-        return response, 401
-
     status = update['status']['name']
 
-    if status not in ['paid', 'paid_ur']:
+    if not is_event_status_allowed(status):
         return "OK", 200
 
     try:
@@ -110,35 +100,52 @@ def timepad_order_webhook():
 
 
 def get_order_slack_message(timepad_json):
-    event_name = timepad_json['event']['name']
+    event_name_formatted = f"*{timepad_json['event']['name']}*\n"
+
+    answers = timepad_json['tickets'][0]['answers']
+    student_data_formatted = f":student: {answers['name']} {answers['surname']} ({answers['mail']})\n"
 
     final_price = timepad_json['payment']['amount']
     discount = timepad_json['payment']['discount']
 
-    if discount == 0:
-        price_formatted = str(final_price) + '₽'
-    else:
-        price_formatted = "%d₽ (%d₽ - %d₽)" % (final_price, final_price+discount, discount)
+    price_formatted = f'{final_price}₽'
 
-    answers = timepad_json['tickets'][0]['answers']
+    if discount != 0:
+        price_formatted = f'{price_formatted} ({final_price + discount}₽ - {discount}₽)'
 
-    name = answers['name']
-    surname = answers['surname']
-    email = answers['mail']
+    price_formatted = f':dollar: {price_formatted}\n'
 
-    student_data_formatted = "%s %s (%s)" % (name, surname, email)
+    status_formatted = f"Статус: {timepad_json['status']['title']}\n"
 
-    status_name = timepad_json['status']['title']
+    promocodes = ', '.join(timepad_json.get('promocodes', []))
+    promocodes_formatted = ''
+    if promocodes:
+        promocodes_formatted = f'Промокоды: {promocodes}\n'
 
-    promocodes = ', '.join(timepad_json['promocodes'])
-    promocodes_formatted = '' if promocodes == '' else 'Промокоды: ' + promocodes
+    referer = timepad_json.get('referer')
+    utm_formatted = ''
+    if referer:
+        utm_formatted = f"_utm_campaign: {referer['campaign']}_\n" \
+                        f"_utm_medium: {referer['medium']}_\n" \
+                        f"_utm_source: {referer['source']}_\n"
 
-    return """
-*%s*
-:student: %s
-:dollar: %s
-%s
-Статус: %s""" % (event_name, student_data_formatted, price_formatted, promocodes_formatted, status_name)
+    return f'{event_name_formatted}' \
+           f'{student_data_formatted}' \
+           f'{price_formatted}' \
+           f'{status_formatted}' \
+           f'{promocodes_formatted}' \
+           f'{utm_formatted}'
+
+
+def is_timepad_sign_valid(request):
+    sig = request.headers.get('X-Hub-Signature') or ''
+    sig_gen = hmac.new(str.encode(secret_timepad_phrase), request.get_data(), hashlib.sha1).hexdigest()
+
+    return sig == ("sha1=" + sig_gen)
+
+
+def is_event_status_allowed(status):
+    return status in ['paid', 'paid_ur']
 
 
 if __name__ == '__main__':
